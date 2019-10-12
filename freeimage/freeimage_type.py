@@ -1,4 +1,8 @@
+import logging
+import numpy as np
 from ctypes import c_uint8, c_int16, c_uint16, c_int32, c_uint32, c_float, c_double
+
+logger = logging.getLogger()
 
 fit_unknown = 0
 fit_bitmap = 1   # standard image		: 1-, 4-, 8-, 16-, 24-, 32-bit
