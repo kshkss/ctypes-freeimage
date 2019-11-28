@@ -6,7 +6,7 @@ import numpy.ctypeslib as npct
 from . import freeimage_type as FIT
 from . import freeimage_format as FIF
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 libcd = cdll.LoadLibrary("libfreeimage.so")
 
