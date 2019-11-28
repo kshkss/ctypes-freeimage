@@ -8,7 +8,13 @@ from . import freeimage_format as FIF
 
 logger = logging.getLogger(__name__)
 
-libcd = cdll.LoadLibrary("libfreeimage.so")
+if os.name == 'posix':
+    libcd = cdll.LoadLibrary("libfreeimage.so")
+elif os.name == 'nt':
+    libcd = cdll.LoadLibrary(os.path.join(os.path.dirname(__file__), "FreeImage.dll"))
+else:
+    logger.error("Unsupported OS.")
+    raise Exception
 
 fib_p = POINTER(c_void_p)
 fitype = c_int
