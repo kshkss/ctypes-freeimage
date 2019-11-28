@@ -65,6 +65,9 @@ libcd.FreeImage_GetBPP.argtype = [fib_p]
 libcd.FreeImage_GetScanLine.restype = POINTER(None)
 libcd.FreeImage_GetScanLine.argtype = [fib_p, c_int]
 
+libcd.FreeImage_EnlargeCanvas.restype = fib_p
+libcd.FreeImage_EnlargeCanvas.argtype = [fib_p, c_int, c_int, c_int, c_int, POINTER(None), c_int]
+
 def image_info(image):
     if(image.ndim == 2):
         height, width = image.shape
@@ -77,11 +80,28 @@ class FIBitmap:
     rawptr = POINTER(c_void_p)
     width = 0
     height = 0
+    ctype = c_int
+    samples = 0
 
-    def __init__(self, ptr):
+    def __init__(self, ptr, *, width=None, height=None, ctype=None, samples=None):
         self.rawptr = ptr
-        self.width = libcd.FreeImage_GetWidth(ptr)
-        self.height = libcd.FreeImage_GetHeight(ptr)
+        if width is None:
+            self.width = libcd.FreeImage_GetWidth(ptr)
+        else:
+            self.width = width
+        if height is None:
+            self.height = libcd.FreeImage_GetHeight(ptr)
+        else:
+            self.height = height
+        if ctype is None or samples is None:
+            fit = libcd.FreeImage_GetImageType(self.rawptr)
+            bpp = libcd.FreeImage_GetBPP(self.rawptr)
+            c_type, sample_count = FIT.to_ctypes(fit, bpp)
+            self.ctype = c_type
+            self.samples = sample_count
+        else:
+            self.ctype = ctype
+            self.samples = samples
 
     def unload(self):
         libcd.FreeImage_Unload(self.rawptr)
@@ -96,9 +116,8 @@ class FIBitmap:
     def to_ndarray(self):
         width = self.width
         height = self.height
-        fit = libcd.FreeImage_GetImageType(self.rawptr)
-        bpp = libcd.FreeImage_GetBPP(self.rawptr)
-        c_type, sample_count = FIT.to_ctypes(fit, bpp)
+        c_type = self.ctype
+        sample_count = self.samples
         lines = [npct.as_array( cast(libcd.FreeImage_GetScanLine(self.rawptr, int(i)), POINTER(c_type)), shape=(width*sample_count,) ) for i in range(0, height)]
         lines.reverse()
         image = np.stack(lines)
@@ -114,6 +133,18 @@ class FIBitmap:
             logger.error("Could not specify the image format of '{}'".format(filename))
             raise Exception
         libcd.FreeImage_Save(fif, self.rawptr, c_filename, option)
+
+    def move(self, dx, dy, *, background=[0,0,0,0]):
+        src = self.rawptr
+        color_type = self.ctype * self.samples
+        color = color_type()
+        for i in range(self.samples):
+            color[i] = background[i]
+        res = libcd.FreeImage_EnlargeCanvas(src, dx, dy, -dx, -dy, color, 0)
+        if not bool(res):
+            logger.error("Failed to create an enlarged image.")
+            raise Exception
+        return FIBitmap(res)
 
 def load(filename):
     c_filename = filename.encode('utf-8')
@@ -144,7 +175,7 @@ def from_ndarray(image):
     for i in range(0, height):
         out = npct.as_array( cast(libcd.FreeImage_GetScanLine(ptr, int(i)), POINTER(c_type)), shape=(width*count,) )
         np.copyto(out, image[height - 1 - i])
-    return FIBitmap(ptr)
+    return FIBitmap(ptr, width=width, height=height, ctype=c_type, channels=count)
  
 def imread(filename):
     with load(filename) as fib:
