@@ -3,8 +3,8 @@ import logging
 from ctypes import *
 import numpy as np
 import numpy.ctypeslib as npct
-from . import freeimage_type as FIT
-from . import freeimage_format as FIF
+import freeimage.image_type as FIT
+import freeimage.image_format as FIF
 
 logger = logging.getLogger(__name__)
 
