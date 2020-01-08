@@ -175,7 +175,7 @@ def from_ndarray(image):
     for i in range(0, height):
         out = npct.as_array( cast(libcd.FreeImage_GetScanLine(ptr, int(i)), POINTER(c_type)), shape=(width*count,) )
         np.copyto(out, image[height - 1 - i])
-    return FIBitmap(ptr, width=width, height=height, ctype=c_type, channels=count)
+    return FIBitmap(ptr, width=width, height=height, ctype=c_type, samples=count)
  
 def imread(filename):
     with load(filename) as fib:
